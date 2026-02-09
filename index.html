@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>
+    (function(w,d,s,l,i){
+      w[l]=w[l]||[];
+      w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+      var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),
+          dl=l!='dataLayer'?'&l='+l:'';
+      j.async=true;
+      j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+      f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-N7R6CHP6');
+  </script>
+  <!-- End Google Tag Manager -->
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Casino Ganamos</title>
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="estilo.css" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Favicon -->
+  <link rel="shortcut icon" href="./img/logopixelzulma-removebg-preview.png" type="image/x-icon"/>
+
+  <!-- Animaciones -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+  <!-- Frases -->
+  <script src="frases.js" defer></script>
+
+  <script defer>
+    document.addEventListener('DOMContentLoaded', () => {
+      const boton = document.getElementById('whatsappButton');
+      const input = document.getElementById('nombreUsuario');
+
+      const API_BASE = "https://script.google.com/macros/s/AKfycbwcKQ-ddvxAz1a3RdXZxBgu0Ztp4u3WCCdrnaCRje7MmUIiTW4dgbPCRPlKfMOaINOn/exec";
+
+      function normalizarNumero(raw) {
+        return String(raw || "").replace(/\D/g, "");
+      }
+
+      async function reserveNumero() {
+        const res = await fetch(`${API_BASE}?mode=reserve`, { cache: "no-store" });
+        const data = await res.json();
+        if (!data.ok || !data.numero || !data.token) throw new Error("Reserve inválido");
+        return data; // {numero, token}
+      }
+
+      function commitToken(token) {
+        fetch(`${API_BASE}?mode=commit&token=${encodeURIComponent(token)}`, {
+          cache: "no-store",
+          keepalive: true
+        }).catch(() => {});
+      }
+
+      function abrirWhatsApp(w, numFinal, mensaje) {
+        const enlaceWaMe   = `https://wa.me/${numFinal}?text=${mensaje}`;
+        const enlaceScheme = `whatsapp://send?phone=${numFinal}&text=${mensaje}`;
+        const enlaceIntent = `intent://send?phone=${numFinal}&text=${mensaje}#Intent;scheme=whatsapp;package=com.whatsapp;end`;
+
+        const ua = navigator.userAgent || "";
+        const isAndroid = /Android/i.test(ua);
+        const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+        if (!w) return;
+
+        if (isAndroid) {
+          // Android: intenta abrir app directo; si falla, fallback a wa.me
+          w.location.href = enlaceIntent;
+          setTimeout(() => { try { w.location.href = enlaceWaMe; } catch(_) {} }, 900);
+          return;
+        }
+
+        if (isIOS) {
+          // iOS: scheme primero; fallback a wa.mem
+          w.location.href = enlaceScheme;
+          setTimeout(() => { try { w.location.href = enlaceWaMe; } catch(_) {} }, 900);
+          return;
+        }
+
+        // Desktop: WhatsApp Web (no hay app)
+        w.location.href = enlaceWaMe;
+      }
+
+      function pintarLoader(w) {
+        try {
+          if (w && w.document) {
+            w.document.write(`<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirigiendo a WhatsApp</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .box { text-align: center; }
+    .icon { width: 64px; height: 64px; margin: 0 auto 14px; }
+    .box p { font-size: 16px; font-weight: 600; margin: 0; color: #222; }
+    .box span { display: block; margin-top: 6px; font-size: 14px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <svg class="icon" viewBox="0 0 32 32" aria-label="WhatsApp" role="img">
+      <path fill="#25D366" d="M19.1 17.5c-.2-.1-1.3-.6-1.5-.7-.2-.1-.4-.1-.6.1-.2.2-.6.7-.8.9-.1.1-.3.2-.5.1-1-.4-1.8-1-2.6-1.8-.7-.8-1.2-1.7-1.4-2-.1-.2 0-.4.1-.5.1-.1.2-.3.3-.4.1-.1.1-.2.2-.4.1-.2.1-.3 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9 0 1.1.8 2.2.9 2.3.1.2 1.6 2.5 3.9 3.6.5.2.9.4 1.3.5.5.2 1 .1 1.3 0 .4-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1 0-.1-.2-.2-.4-.3z"/>
+      <path fill="#25D366" d="M16 3C9.4 3 4 8.4 4 15c0 2.1.6 4.1 1.6 5.8L4 29l8.4-1.6c1.6.9 3.5 1.4 5.6 1.4 6.6 0 12-5.4 12-12S22.6 3 16 3zm0 21.7c-1.9 0-3.7-.5-5.3-1.5l-.4-.2-5 .9.9-4.9-.3-.4C5 17.2 4.6 16.1 4.6 15 4.6 9.6 9.1 5.1 14.5 5.1S24.4 9.6 24.4 15 19.9 24.7 16 24.7z"/>
+    </svg>
+    <p>Redirigiendo a WhatsApp</p>
+    <span>Un segundo…</span>
+  </div>
+</body>
+</html>`);
+            w.document.close();
+          }
+        } catch (err) {
+          console.error("Error pintando loader:", err);
+        }
+      }
+
+      function pushDL(obj) {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push(obj);
+      }
+
+      boton.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        const nombre = input.value.trim();
+        if (!nombre) {
+          alert("Por favor escribe tu nombre antes de continuar.");
+          input.focus();
+          return;
+        }
+
+        // Abrimos pestaña inmediatamente (evita bloqueos + se siente más rápido)
+        const w = window.open("about:blank", "_blank");
+        pintarLoader(w);
+
+        // Evento inmediato
+        pushDL({
+          event: "whatsapp_click",
+          step: "intent",
+          button_id: "whatsappButton"
+        });
+
+        try {
+          const { numero, token } = await reserveNumero();
+
+          const frases = Array.isArray(window.frases) && window.frases.length
+            ? window.frases
+            : ["Hola! Soy"];
+
+          const frase = frases[Math.floor(Math.random() * frases.length)];
+          const mensaje = encodeURIComponent(`${frase} ${nombre}`);
+
+          const numFinal = normalizarNumero(numero);
+
+          // Evento con datos reales
+          pushDL({
+            event: "whatsapp_click",
+            step: "ready",
+            button_id: "whatsappButton",
+            wa_number: numFinal,
+            user_name: nombre
+          });
+
+          // Redirección (app si se puede, fallback wa.me)
+          abrirWhatsApp(w, numFinal, mensaje);
+
+          // Avanza secuencia
+          commitToken(token);
+
+        } catch (err) {
+          console.error(err);
+          if (w) w.close();
+          alert("No se pudo abrir WhatsApp. Intentá de nuevo.");
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') boton.click();
+      });
+    });
+  </script>
+</head>
+
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N7R6CHP6"
+      height="0" width="0" style="display:none;visibility:hidden"></iframe>
+  </noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <!-- Logo -->
+  <div class="logo animate_animated animate_flip">
+    <img src="./img/diseño.PNG" alt="Ganamos.co">
+  </div>
+
+  <!-- Título -->
+  <div class="main-title">
+    <p>Para crear tu cuenta</p>
+    <p>envíanos un Whatsapp</p>
+    <h2>haciendo click en el botón de abajo</h2>
+  </div>
+
+  <!-- Input nombre -->
+  <div style="text-align: center; margin: 20px;">
+    <input
+      type="text"
+      id="nombreUsuario"
+      placeholder="Escribe tu nombre aquí"
+      style="padding: 10px; width: 80%; max-width: 300px;"
+    />
+  </div>
+
+  <!-- Botón WhatsApp -->
+  <div class="whatsapp">
+    <a class="button" href="#" target="_blank" id="whatsappButton" rel="noopener">
+      <span>Crea tu usuario</span>
+      <img src="./img/whatsapp-64.png" alt="WhatsApp Logo">
+    </a>
+  </div>
+
+  <!-- Info -->
+  <div class="MINIMO">
+    <p>Minimo de Carga $3000</p>
+  </div>
+
+  <div class="info-section">
+    <img src="./img/bank_6719375.png" class="info-logo" alt="">
+    <p class="info-text">Aceptamos transferencias bancarias.</p>
+  </div>
+
+  <div class="info-section">
+    <img src="./img/24-hours_1274033.png" class="info-logo" alt="">
+    <p class="info-text">Estamos cargando las 24 hs todos los días.</p>
+  </div>
+
+  <div class="TERMINO">
+    <p class="info-text">Prohibido el juego de azar a menores de 18 años.</p>
+  </div>
+</body>
+</html>
