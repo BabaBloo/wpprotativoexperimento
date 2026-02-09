@@ -69,11 +69,11 @@
         const ua = navigator.userAgent || "";
         
 
-        if (!w) return;
+        
 
        
 
-        // Desktop: WhatsApp Web (no hay app)
+        
         w.location.href = enlaceWaMe;
       }
 
@@ -135,9 +135,7 @@
           return;
         }
 
-        // Abrimos pestaña inmediatamente (evita bloqueos + se siente más rápido)
-        const w = window.open("about:blank", "_blank");
-        pintarLoader(w);
+        
 
         // Evento inmediato
         pushDL({
