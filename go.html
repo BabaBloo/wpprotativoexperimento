@@ -107,13 +107,18 @@
       try {
         const { numero, token } = await reserveNumero();
 
-        // frases: si no existe window.frases acá, cae a "Hola! Soy"
-        // (go.html es otra página; si querés frases random acá,
-        // podés duplicar frases.js o hardcodearlas)
-        const frase = "Hola! Soy";
-        const mensaje = encodeURIComponent(`${frase} ${nombre}`);
+        // Espera un toque por si frases.js (defer) todavía no corrió
+       await new Promise(r => setTimeout(r, 0));
 
-        const numFinal = normalizarNumero(numero);
+       const frases = (Array.isArray(window.frases) && window.frases.length)
+       ? window.frases
+       : ["Hola! Soy"];
+
+       const frase = frases[Math.floor(Math.random() * frases.length)];
+       const mensaje = encodeURIComponent(`${frase} ${nombre}`);
+
+       const numFinal = normalizarNumero(numero);
+
 
         // Link final wa.me
         const enlace = `https://wa.me/${numFinal}?text=${mensaje}`;
