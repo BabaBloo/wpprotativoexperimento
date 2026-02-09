@@ -1,20 +1,16 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
+
+  
+
   <!-- Google Tag Manager -->
-  <script>
-    (function(w,d,s,l,i){
-      w[l]=w[l]||[];
-      w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
-      var f=d.getElementsByTagName(s)[0],
-          j=d.createElement(s),
-          dl=l!='dataLayer'?'&l='+l:'';
-      j.async=true;
-      j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
-      f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-N7R6CHP6');
-  </script>
-  <!-- End Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-N7R6CHP6');</script>
+<!-- End Google Tag Manager -->
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -38,49 +34,69 @@
   <script src="frases.js" defer></script>
 
   <script defer>
-    document.addEventListener('DOMContentLoaded', () => {
-      const boton = document.getElementById('whatsappButton');
-      const input = document.getElementById('nombreUsuario');
+  document.addEventListener('DOMContentLoaded', () => {
+    const boton = document.getElementById('whatsappButton');
+    const input = document.getElementById('nombreUsuario');
 
-      const API_BASE = "https://script.google.com/macros/s/AKfycbwcKQ-ddvxAz1a3RdXZxBgu0Ztp4u3WCCdrnaCRje7MmUIiTW4dgbPCRPlKfMOaINOn/exec";
+    const API_BASE = "https://script.google.com/macros/s/AKfycbwcKQ-ddvxAz1a3RdXZxBgu0Ztp4u3WCCdrnaCRje7MmUIiTW4dgbPCRPlKfMOaINOn/exec";
 
-      function normalizarNumero(raw) {
-        return String(raw || "").replace(/\D/g, "");
+    function normalizarNumero(raw) {
+      return String(raw || "").replace(/\D/g, "");
+    }
+
+    function generarEventId() {
+      // UUID nativo si existe, si no fallback estable
+      try {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return window.crypto.randomUUID();
+        }
+      } catch {}
+      return "evt_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+    }
+
+    async function reserveNumero() {
+      const res = await fetch(`${API_BASE}?mode=reserve`, { cache: "no-store" });
+      const data = await res.json();
+      if (!data.ok || !data.numero || !data.token) throw new Error("Reserve inválido");
+      return data; // {numero, token}
+    }
+
+    function commitToken(token) {
+      fetch(`${API_BASE}?mode=commit&token=${encodeURIComponent(token)}`, {
+        cache: "no-store",
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    boton.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      const nombre = input.value.trim();
+      if (!nombre) {
+        alert("Por favor escribe tu nombre antes de continuar.");
+        input.focus();
+        return;
       }
 
-      async function reserveNumero() {
-        const res = await fetch(`${API_BASE}?mode=reserve`, { cache: "no-store" });
-        const data = await res.json();
-        if (!data.ok || !data.numero || !data.token) throw new Error("Reserve inválido");
-        return data; // {numero, token}
-      }
+      // ✅ event_id generado por click (sirve para dedupe Pixel + CAPI/Stape)
+      const event_id = generarEventId();
 
-      function commitToken(token) {
-        fetch(`${API_BASE}?mode=commit&token=${encodeURIComponent(token)}`, {
-          cache: "no-store",
-          keepalive: true
-        }).catch(() => {});
-      }
+      // Abrimos pestaña inmediatamente (evita bloqueos + se siente más rápido)
+      const w = window.open("about:blank", "_blank");
 
-      function abrirWhatsApp(w, numFinal, mensaje) {
-        const enlaceWaMe   = `https://wa.me/${numFinal}?text=${mensaje}`;
-        
+      // (Opcional) Evento de intención (NO lo uses para Purchase)
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: "whatsapp_click",
+        step: "init",
+        button_id: "whatsappButton",
+        event_id: event_id
+      });
 
-        const ua = navigator.userAgent || "";
-        
-
-        
-
-       
-
-        
-        w.location.href = enlaceWaMe;
-      }
-
-      function pintarLoader(w) {
-        try {
-          if (w && w.document) {
-            w.document.write(`<!doctype html>
+      // ✅ Loader con SVG inline (no data:, no rutas)
+      try {
+        if (w && w.document) {
+          w.document.write(`<!doctype html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -113,87 +129,63 @@
   </div>
 </body>
 </html>`);
-            w.document.close();
-          }
-        } catch (err) {
-          console.error("Error pintando loader:", err);
+          w.document.close();
         }
+      } catch (err) {
+        console.error("Error pintando loader:", err);
       }
 
-      function pushDL(obj) {
+      try {
+        const { numero, token } = await reserveNumero();
+
+        const frases = Array.isArray(window.frases) && window.frases.length
+          ? window.frases
+          : ["Hola! Soy"];
+
+        const frase = frases[Math.floor(Math.random() * frases.length)];
+        const mensaje = encodeURIComponent(`${frase} ${nombre}`);
+
+        const numFinal = normalizarNumero(numero);
+        const enlace = `https://wa.me/${numFinal}?text=${mensaje}`;
+
+        // ✅ Evento final con datos reales + event_id (USAR ESTE para Purchase)
         window.dataLayer = window.dataLayer || [];
-        window.dataLayer.push(obj);
-      }
-
-      boton.addEventListener('click', async (e) => {
-        e.preventDefault();
-
-        const nombre = input.value.trim();
-        if (!nombre) {
-          alert("Por favor escribe tu nombre antes de continuar.");
-          input.focus();
-          return;
-        }
-
-        // Abrimos pestaña inmediatamente (evita bloqueos + se siente más rápido)
-        const w = window.open("about:blank", "_blank");
-        pintarLoader(w);
-
-        // Evento inmediato
-        pushDL({
+        window.dataLayer.push({
           event: "whatsapp_click",
-          step: "intent",
-          button_id: "whatsappButton"
+          step: "ready",
+          button_id: "whatsappButton",
+          wa_number: numFinal,
+          user_name: nombre,
+          event_id: event_id
         });
 
-        try {
-          const { numero, token } = await reserveNumero();
+        // Redirección final
+        if (w) w.location.href = enlace;
 
-          const frases = Array.isArray(window.frases) && window.frases.length
-            ? window.frases
-            : ["Hola! Soy"];
+        // Avanza secuencia
+        commitToken(token);
 
-          const frase = frases[Math.floor(Math.random() * frases.length)];
-          const mensaje = encodeURIComponent(`${frase} ${nombre}`);
-
-          const numFinal = normalizarNumero(numero);
-
-          // Evento con datos reales
-          pushDL({
-            event: "whatsapp_click",
-            step: "ready",
-            button_id: "whatsappButton",
-            wa_number: numFinal,
-            user_name: nombre
-          });
-
-          // Redirección (app si se puede, fallback wa.me)
-          abrirWhatsApp(w, numFinal, mensaje);
-
-          // Avanza secuencia
-          commitToken(token);
-
-        } catch (err) {
-          console.error(err);
-          if (w) w.close();
-          alert("No se pudo abrir WhatsApp. Intentá de nuevo.");
-        }
-      });
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') boton.click();
-      });
+      } catch (err) {
+        console.error(err);
+        if (w) w.close();
+        alert("No se pudo abrir WhatsApp. Intentá de nuevo.");
+      }
     });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') boton.click();
+    });
+  });
   </script>
+
 </head>
 
 <body>
+
   <!-- Google Tag Manager (noscript) -->
-  <noscript>
-    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N7R6CHP6"
-      height="0" width="0" style="display:none;visibility:hidden"></iframe>
-  </noscript>
-  <!-- End Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N7R6CHP6"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 
   <!-- Logo -->
   <div class="logo animate_animated animate_flip">
@@ -219,7 +211,7 @@
 
   <!-- Botón WhatsApp -->
   <div class="whatsapp">
-    <a class="button" href="#" target="_blank" id="whatsappButton" rel="noopener">
+    <a class="button" href="#" target="_blank" id="whatsappButton">
       <span>Crea tu usuario</span>
       <img src="./img/whatsapp-64.png" alt="WhatsApp Logo">
     </a>
@@ -243,5 +235,6 @@
   <div class="TERMINO">
     <p class="info-text">Prohibido el juego de azar a menores de 18 años.</p>
   </div>
+
 </body>
 </html>
