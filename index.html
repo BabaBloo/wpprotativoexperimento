@@ -34,149 +34,113 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <script src="frases.js" defer></script>
 
   <script defer>
-  document.addEventListener('DOMContentLoaded', () => {
-    const boton = document.getElementById('whatsappButton');
-    const input = document.getElementById('nombreUsuario');
+document.addEventListener('DOMContentLoaded', () => {
+  const boton = document.getElementById('whatsappButton');
+  const input = document.getElementById('nombreUsuario');
 
-    const API_BASE = "https://script.google.com/macros/s/AKfycbwcKQ-ddvxAz1a3RdXZxBgu0Ztp4u3WCCdrnaCRje7MmUIiTW4dgbPCRPlKfMOaINOn/exec";
+  const API_BASE = "https://script.google.com/macros/s/AKfycbwcKQ-ddvxAz1a3RdXZxBgu0Ztp4u3WCCdrnaCRje7MmUIiTW4dgbPCRPlKfMOaINOn/exec";
 
-    function normalizarNumero(raw) {
-      return String(raw || "").replace(/\D/g, "");
-    }
+  function normalizarNumero(raw) {
+    return String(raw || "").replace(/\D/g, "");
+  }
 
-    function generarEventId() {
-      // UUID nativo si existe, si no fallback estable
-      try {
-        if (window.crypto && typeof window.crypto.randomUUID === "function") {
-          return window.crypto.randomUUID();
-        }
-      } catch {}
-      return "evt_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-    }
-
-    async function reserveNumero() {
-      const res = await fetch(`${API_BASE}?mode=reserve`, { cache: "no-store" });
-      const data = await res.json();
-      if (!data.ok || !data.numero || !data.token) throw new Error("Reserve inválido");
-      return data; // {numero, token}
-    }
-
-    function commitToken(token) {
-      fetch(`${API_BASE}?mode=commit&token=${encodeURIComponent(token)}`, {
-        cache: "no-store",
-        keepalive: true
-      }).catch(() => {});
-    }
-
-    boton.addEventListener('click', async (e) => {
-      e.preventDefault();
-
-      const nombre = input.value.trim();
-      if (!nombre) {
-        alert("Por favor escribe tu nombre antes de continuar.");
-        input.focus();
-        return;
+  function generarEventId() {
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
       }
+    } catch {}
+    return "evt_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+  }
 
-      // ✅ event_id generado por click (sirve para dedupe Pixel + CAPI/Stape)
-      const event_id = generarEventId();
+  async function reserveNumero() {
+    const res = await fetch(`${API_BASE}?mode=reserve`, { cache: "no-store" });
+    const data = await res.json();
+    if (!data.ok || !data.numero || !data.token) throw new Error("Reserve inválido");
+    return data; // {numero, token}
+  }
 
-      // Abrimos pestaña inmediatamente (evita bloqueos + se siente más rápido)
-      const w = window.open("about:blank", "_blank");
+  function commitToken(token) {
+    // intenta mandar el commit antes de navegar
+    fetch(`${API_BASE}?mode=commit&token=${encodeURIComponent(token)}`, {
+      cache: "no-store",
+      keepalive: true
+    }).catch(() => {});
+  }
 
-      // (Opcional) Evento de intención (NO lo uses para Purchase)
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({
+  function pushDL(obj) {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(obj);
+  }
+
+  boton.addEventListener('click', async (e) => {
+    // IMPORTANTÍSIMO: esto anula el target="_blank" del HTML
+    e.preventDefault();
+
+    const nombre = input.value.trim();
+    if (!nombre) {
+      alert("Por favor escribe tu nombre antes de continuar.");
+      input.focus();
+      return;
+    }
+
+    const event_id = generarEventId();
+
+    // Evento init (sirve para medir intención)
+    pushDL({
+      event: "whatsapp_click",
+      step: "init",
+      button_id: "whatsappButton",
+      event_id
+    });
+
+    // evita doble click
+    boton.style.pointerEvents = "none";
+    boton.style.opacity = "0.7";
+
+    try {
+      const { numero, token } = await reserveNumero();
+
+      const frases = (Array.isArray(window.frases) && window.frases.length)
+        ? window.frases
+        : ["Hola! Soy"];
+
+      const frase = frases[Math.floor(Math.random() * frases.length)];
+      const mensaje = encodeURIComponent(`${frase} ${nombre}`);
+
+      const numFinal = normalizarNumero(numero);
+      const enlace = `https://wa.me/${numFinal}?text=${mensaje}`;
+
+      // Evento ready (este es el que querés para dedupe Pixel + CAPI)
+      pushDL({
         event: "whatsapp_click",
-        step: "init",
+        step: "ready",
         button_id: "whatsappButton",
-        event_id: event_id
+        wa_number: numFinal,
+        user_name: nombre,
+        event_id
       });
 
-      // ✅ Loader con SVG inline (no data:, no rutas)
-      try {
-        if (w && w.document) {
-          w.document.write(`<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Redirigiendo a WhatsApp</title>
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #ffffff;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      // Commit antes de salir
+      commitToken(token);
+
+      // Redirige en la MISMA pestaña (más chances de abrir la app)
+      window.location.assign(enlace);
+
+    } catch (err) {
+      console.error(err);
+      alert("No se pudo abrir WhatsApp. Intentá de nuevo.");
+      boton.style.pointerEvents = "";
+      boton.style.opacity = "";
     }
-    .box { text-align: center; }
-    .icon { width: 64px; height: 64px; margin: 0 auto 14px; }
-    .box p { font-size: 16px; font-weight: 600; margin: 0; color: #222; }
-    .box span { display: block; margin-top: 6px; font-size: 14px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <svg class="icon" viewBox="0 0 32 32" aria-label="WhatsApp" role="img">
-      <path fill="#25D366" d="M19.1 17.5c-.2-.1-1.3-.6-1.5-.7-.2-.1-.4-.1-.6.1-.2.2-.6.7-.8.9-.1.1-.3.2-.5.1-1-.4-1.8-1-2.6-1.8-.7-.8-1.2-1.7-1.4-2-.1-.2 0-.4.1-.5.1-.1.2-.3.3-.4.1-.1.1-.2.2-.4.1-.2.1-.3 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9 0 1.1.8 2.2.9 2.3.1.2 1.6 2.5 3.9 3.6.5.2.9.4 1.3.5.5.2 1 .1 1.3 0 .4-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1 0-.1-.2-.2-.4-.3z"/>
-      <path fill="#25D366" d="M16 3C9.4 3 4 8.4 4 15c0 2.1.6 4.1 1.6 5.8L4 29l8.4-1.6c1.6.9 3.5 1.4 5.6 1.4 6.6 0 12-5.4 12-12S22.6 3 16 3zm0 21.7c-1.9 0-3.7-.5-5.3-1.5l-.4-.2-5 .9.9-4.9-.3-.4C5 17.2 4.6 16.1 4.6 15 4.6 9.6 9.1 5.1 14.5 5.1S24.4 9.6 24.4 15 19.9 24.7 16 24.7z"/>
-    </svg>
-    <p>Redirigiendo a WhatsApp</p>
-    <span>Un segundo…</span>
-  </div>
-</body>
-</html>`);
-          w.document.close();
-        }
-      } catch (err) {
-        console.error("Error pintando loader:", err);
-      }
-
-      try {
-        const { numero, token } = await reserveNumero();
-
-        const frases = Array.isArray(window.frases) && window.frases.length
-          ? window.frases
-          : ["Hola! Soy"];
-
-        const frase = frases[Math.floor(Math.random() * frases.length)];
-        const mensaje = encodeURIComponent(`${frase} ${nombre}`);
-
-        const numFinal = normalizarNumero(numero);
-        const enlace = `https://wa.me/${numFinal}?text=${mensaje}`;
-
-        // ✅ Evento final con datos reales + event_id (USAR ESTE para Purchase)
-        window.dataLayer = window.dataLayer || [];
-        window.dataLayer.push({
-          event: "whatsapp_click",
-          step: "ready",
-          button_id: "whatsappButton",
-          wa_number: numFinal,
-          user_name: nombre,
-          event_id: event_id
-        });
-
-        // Redirección final
-        if (w) w.location.href = enlace;
-
-        // Avanza secuencia
-        commitToken(token);
-
-      } catch (err) {
-        console.error(err);
-        if (w) w.close();
-        alert("No se pudo abrir WhatsApp. Intentá de nuevo.");
-      }
-    });
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') boton.click();
-    });
   });
-  </script>
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') boton.click();
+  });
+});
+</script>
+
 
 </head>
 
