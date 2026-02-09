@@ -135,7 +135,9 @@
           return;
         }
 
-        
+        // Abrimos pestaña inmediatamente (evita bloqueos + se siente más rápido)
+        const w = window.open("about:blank", "_blank");
+        pintarLoader(w);
 
         // Evento inmediato
         pushDL({
