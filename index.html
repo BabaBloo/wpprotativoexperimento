@@ -64,28 +64,14 @@
 
       function abrirWhatsApp(w, numFinal, mensaje) {
         const enlaceWaMe   = `https://wa.me/${numFinal}?text=${mensaje}`;
-        const enlaceScheme = `whatsapp://send?phone=${numFinal}&text=${mensaje}`;
-        const enlaceIntent = `intent://send?phone=${numFinal}&text=${mensaje}#Intent;scheme=whatsapp;package=com.whatsapp;end`;
+        
 
         const ua = navigator.userAgent || "";
-        const isAndroid = /Android/i.test(ua);
-        const isIOS = /iPhone|iPad|iPod/i.test(ua);
+        
 
         if (!w) return;
 
-        if (isAndroid) {
-          // Android: intenta abrir app directo; si falla, fallback a wa.me
-          w.location.href = enlaceIntent;
-          setTimeout(() => { try { w.location.href = enlaceWaMe; } catch(_) {} }, 900);
-          return;
-        }
-
-        if (isIOS) {
-          // iOS: scheme primero; fallback a wa.mem
-          w.location.href = enlaceScheme;
-          setTimeout(() => { try { w.location.href = enlaceWaMe; } catch(_) {} }, 900);
-          return;
-        }
+       
 
         // Desktop: WhatsApp Web (no hay app)
         w.location.href = enlaceWaMe;
